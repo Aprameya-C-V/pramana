@@ -1,0 +1,14 @@
+{
+  "fitted_on": "holdout split (train rows held out with seed 3407), never test",
+  "probabilities_temperature": {
+    "choice": 0.9999999403953552,
+    "score": 1.0253150463104248,
+    "noul": 1.0512710809707642
+  },
+  "confidence_temperature": {
+    "choice": 0.33287107944488525,
+    "score": 0.32465246319770813,
+    "noul": 0.3678794503211975
+  },
+  "usage": "probabilities = softmax(logits / probabilities_temperature[type]); confidence = max(softmax(logits / confidence_temperature[type]))"
+}

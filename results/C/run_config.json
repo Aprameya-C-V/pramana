@@ -1,0 +1,64 @@
+{
+  "model": "unsloth/Qwen3.5-2B",
+  "out": "/root/niti/runs2/C",
+  "seq": 1024,
+  "r": 16,
+  "alpha": 16,
+  "lr": 0.0002,
+  "head_lr": null,
+  "steps": 400,
+  "bs": 8,
+  "ga": 1,
+  "seed": 3407,
+  "warmup": 10,
+  "save_steps": 100,
+  "brier_weight": 1.0,
+  "ordinal_weight": 0.1,
+  "label_smoothing": 0.0,
+  "permute_fields": false,
+  "gc": "false",
+  "workers": 16,
+  "limit": 0,
+  "skip_train": false,
+  "adapter": null,
+  "build_report": {
+    "total": 6000,
+    "skipped": 0,
+    "reason": null,
+    "truncated": 89
+  },
+  "n_train_items": 1120,
+  "n_holdout": 80,
+  "n_train_cases": 1200,
+  "train_metrics": {
+    "train_runtime": 219.8709,
+    "train_samples_per_second": 14.554,
+    "train_steps_per_second": 1.819,
+    "total_flos": 0.0,
+    "train_loss": 0.9560854125022888,
+    "epoch": 2.857142857142857
+  },
+  "train_minutes": 3.685524594783783,
+  "holdout": {
+    "accuracy": 0.81,
+    "ece": 0.18469279013574127,
+    "loss": 0.8399791180435568,
+    "record_accuracy": 0.3875
+  },
+  "calibrate": {
+    "accuracy": 0.81,
+    "ece": 0.04324818938970566,
+    "loss": 1.2235624565000762,
+    "record_accuracy": 0.3875,
+    "fitted_types": [
+      0,
+      1,
+      2
+    ]
+  },
+  "peak_vram_gb": 21.89,
+  "bf16": true,
+  "torch": "2.8.0+cu128",
+  "predict_minutes": 0.79,
+  "n_decisions": 2000
+}

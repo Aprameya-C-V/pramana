@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pramana: Open-Source Decision Models</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta name="description" content="Pramana-2B and Pramana-0.8B: small decision models that return calibrated probabilities and a separate confidence signal. Method, evaluation and ablations.">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #fcfcfb;
+  --surface: #ffffff;
+  --surface-2: #f4f3f0;
+  --border: #e4e2dc;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --text-3: #7a7974;
+  --accent: #2a78d6;
+  --accent-soft: #e6f0fc;
+  --context: #b9b8b2;
+  --context-strong: #8f8e88;
+  --good: #0ca30c;
+  --critical: #d03b3b;
+  --grid: #ecebe7;
+  --code-bg: #f4f3f0;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 17px/1.65 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+}
+.wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
+header.top {
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 10;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+}
+header.top .wrap { display: flex; align-items: center; justify-content: space-between; height: 56px; gap: 16px; }
+.brand { font-weight: 700; letter-spacing: -0.01em; color: var(--text); text-decoration: none; }
+.brand span { color: var(--accent); }
+nav.toc { display: flex; gap: 18px; font-size: 14px; overflow-x: auto; white-space: nowrap; }
+nav.toc a { color: var(--text-2); text-decoration: none; }
+nav.toc a:hover { color: var(--text); }
+.hero { padding: 72px 0 40px; }
+.eyebrow { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+h1 { font-size: clamp(34px, 6vw, 52px); line-height: 1.08; letter-spacing: -0.025em; margin: 12px 0 18px; }
+.lede { font-size: 20px; color: var(--text-2); max-width: 680px; margin: 0; }
+.meta { margin-top: 20px; font-size: 14px; color: var(--text-3); }
+h2 { font-size: 28px; letter-spacing: -0.015em; margin: 72px 0 12px; line-height: 1.2; }
+h3 { font-size: 19px; margin: 36px 0 8px; }
+p { margin: 12px 0; }
+a { color: var(--accent); }
+.muted { color: var(--text-2); }
+.small { font-size: 14px; color: var(--text-3); }
+hr { border: 0; border-top: 1px solid var(--border); margin: 64px 0 0; }
+
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 32px 0 8px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.tile .k { font-size: 13px; color: var(--text-2); }
+.tile .v { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin: 4px 0 2px; }
+.tile .s { font-size: 13px; color: var(--text-3); line-height: 1.4; }
+
+.callout {
+  border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  background: var(--surface); border-radius: 10px; padding: 14px 18px; margin: 20px 0;
+}
+.callout.warn { border-left-color: var(--critical); }
+.callout strong { display: block; margin-bottom: 2px; }
+
+.table-wrap { overflow-x: auto; margin: 16px 0; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 9px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-size: 12.5px; font-weight: 600; color: var(--text-2); background: var(--surface-2); text-transform: none; }
+tbody tr:last-child td { border-bottom: 0; }
+tr.ours td { background: var(--accent-soft); font-weight: 600; }
+td.best { font-weight: 700; }
+td.sig { color: var(--text); font-weight: 700; }
+
+.timeline { list-style: none; padding: 0; margin: 20px 0; position: relative; }
+.timeline::before { content: ""; position: absolute; left: 7px; top: 6px; bottom: 6px; width: 2px; background: var(--border); }
+.timeline li { position: relative; padding-left: 32px; margin: 0 0 22px; }
+.timeline li::before {
+  content: ""; position: absolute; left: 0; top: 7px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--context-strong);
+}
+.timeline li.key::before { border-color: var(--accent); background: var(--accent); }
+.timeline .when { font-size: 13px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.timeline .what { font-weight: 600; }
+
+pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font-size: 13.5px; line-height: 1.55; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }
+p code, li code, td code { background: var(--code-bg); padding: 1px 5px; border-radius: 5px; }
+
+figure { margin: 24px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 18px 12px; }
+figure .ftitle { font-weight: 600; font-size: 15px; }
+figure .fsub { font-size: 13px; color: var(--text-2); margin-bottom: 8px; }
+figcaption { font-size: 13px; color: var(--text-3); margin-top: 6px; line-height: 1.5; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--text-2); margin: 4px 0 8px; }
+.legend i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.legend i.dot { width: 10px; height: 10px; border-radius: 50%; }
+.tip {
+  position: absolute; pointer-events: none; z-index: 5; opacity: 0; transition: opacity .08s;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 10px; font-size: 12.5px; line-height: 1.45;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12); white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.tip b { font-weight: 600; }
+
+.diagram svg { width: 100%; height: auto; display: block; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+.card h4 { margin: 0 0 6px; font-size: 15px; }
+.card p { margin: 0; font-size: 14.5px; color: var(--text-2); }
+
+ul.clean { padding-left: 20px; }
+ul.clean li { margin: 6px 0; }
+footer { border-top: 1px solid var(--border); margin-top: 80px; padding: 28px 0 48px; font-size: 14px; color: var(--text-3); }
+
+@media (max-width: 720px) {
+  body { font-size: 16px; }
+  .wrap { padding: 0 16px; }
+  nav.toc { display: none; }
+  .tiles { grid-template-columns: repeat(2, 1fr); }
+  .grid2 { grid-template-columns: 1fr; }
+  .hero { padding-top: 44px; }
+  h2 { margin-top: 56px; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#">Pramana<span>.</span></a>
+    <nav class="toc">
+      <a href="#results">Results</a>
+      <a href="#evaluation">Evaluation</a>
+      <a href="#method">Method</a>
+      <a href="#ablations">What failed</a>
+      <a href="#reproduce">Reproduce</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section class="hero">
+  <div class="eyebrow">Technical report · October 2026</div>
+  <h1>Pramana: Open-Source Decision Models</h1>
+  <p class="lede">Small, calibrated models for structured decisions. This report covers how the models were trained, the calibration method at their core, how they were evaluated, and what did not work.</p>
+  <p class="meta">Pramana-2B and Pramana-0.8B · open weights · Apache 2.0</p>
+
+  <div class="tiles">
+    <div class="tile"><div class="k">KL from gold</div><div class="v">0.0755</div><div class="s">Pramana-2B. Lowest of any fine-tuned entry listed.</div></div>
+    <div class="tile"><div class="k">Brier score</div><div class="v">0.0415</div><div class="s">Pramana-2B. Lowest of any fine-tuned entry listed.</div></div>
+    <div class="tile"><div class="k">Confidence ECE</div><div class="v">0.025</div><div class="s">Pramana-0.8B's separate <code>confidence</code> output.</div></div>
+    <div class="tile"><div class="k">Accuracy</div><div class="v">0.8005</div><div class="s">Pramana-2B. Level with small models, behind the best 4B.</div></div>
+  </div>
+  <p class="small">All Pramana numbers are computed from our published prediction files with the benchmark's metric code. Every other number is as listed on the benchmark leaderboard unless stated.</p>
+</section>
+
+<h2>In short</h2>
+<ul class="clean">
+  <li><strong>What it is.</strong> A decision model reads one piece of unstructured state (a support thread, an invoice, a security alert) and answers typed questions about it, returning a probability for every option in a single forward pass.</li>
+  <li><strong>Where it leads.</strong> Distributional quality: Pramana-2B has the lowest KL and Brier among fine-tuned models listed on the benchmark.</li>
+  <li><strong>Where it does not.</strong> Accuracy. Pramana-2B reaches 0.8005, level with small fine-tuned models and below the best 4B entries. Across every recipe we tried, single models landed between 0.784 and 0.803.</li>
+  <li><strong>The idea.</strong> On this benchmark, KL and top-label ECE want different temperatures. Pramana returns two calibrations of the same logits instead of forcing one distribution to serve both.</li>
+</ul>
+
+<h2 id="results">Results</h2>
+<p>Typed Decisions has 400 test cases across four workflows (agent-trace review, customer service, invoice processing, security incidents), each with five typed questions: 600 yes/no (<code>noul</code>), 600 one-of-N (<code>choice</code>) and 800 ordered-rubric (<code>score</code>) decisions. The gold label for each decision is a soft distribution <i>g</i>, the mean of three teacher samples; the model outputs a distribution <i>p</i> over the same options.</p>
+
+<div class="table-wrap">
+<table class="defs">
+  <thead><tr><th>Metric</th><th style="text-align:left">Definition (per decision, averaged over 2,000)</th><th style="text-align:left">What it rewards</th></tr></thead>
+  <tbody>
+    <tr><td>Accuracy ↑</td><td style="text-align:left"><code>argmax p = argmax g</code></td><td style="text-align:left">picking the teacher's most likely option</td></tr>
+    <tr><td>KL ↓</td><td style="text-align:left"><code>Σ g·log(g / p)</code></td><td style="text-align:left">matching the full soft distribution, heavily punishing near-zero <i>p</i> where <i>g</i> has mass</td></tr>
+    <tr><td>Brier ↓</td><td style="text-align:left"><code>Σ (p − g)²</code></td><td style="text-align:left">matching the distribution, with bounded penalties</td></tr>
+    <tr><td>ECE ↓</td><td style="text-align:left">10 equal-width bins of <code>max p</code>; <code>Σ (n_b/N)·|acc_b − conf_b|</code></td><td style="text-align:left">top probability equal to the chance of being right</td></tr>
+  </tbody>
+</table>
+</div>
+<p>The benchmark keeps fine-tuned models and zero-shot models in separate tables, and so do we.</p>
+
+<h3>Like for like: models fine-tuned on the train split</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Model</th><th>Params</th><th>Accuracy ↑</th><th>KL ↓</th><th>Brier ↓</th><th>ECE ↓</th></tr></thead>
+  <tbody>
+    <tr class="ours"><td>Pramana-2B</td><td>2B</td><td>0.8005</td><td class="best">0.0755</td><td class="best">0.0415</td><td>0.168 · 0.038<sup>†</sup></td></tr>
+    <tr class="ours"><td>Pramana-0.8B</td><td>0.8B</td><td>0.7970</td><td>0.0819</td><td>0.0446</td><td>0.165 · <b>0.025</b><sup>†</sup></td></tr>
+    <tr><td>Decider-4B</td><td>4B</td><td class="best">0.8205</td><td>0.301</td><td>0.132</td><td>0.031</td></tr>
+    <tr><td>Arbiter-4B</td><td>4B</td><td>0.817</td><td>0.092</td><td>0.048</td><td>0.184</td></tr>
+    <tr><td>Darwin-27B-ZTC-v5</td><td>27B</td><td>0.812</td><td>–</td><td>–</td><td>–</td></tr>
+    <tr><td>ministral3-3b-reasoning</td><td>3B</td><td>0.808</td><td>0.077</td><td>0.042</td><td>0.182</td></tr>
+    <tr><td>sysone-0.4B</td><td>0.4B</td><td>0.8025</td><td>0.080</td><td>0.0438</td><td>0.174</td></tr>
+    <tr><td>OpenDecider-large-td</td><td>80B-A3B</td><td>0.801</td><td>0.081</td><td>0.044</td><td>–</td></tr>
+    <tr><td>od1-typed-decisions</td><td>4B</td><td>0.797</td><td>0.082</td><td>0.045</td><td>0.156</td></tr>
+    <tr><td>OpenDecider-nano</td><td>0.4B</td><td>0.796</td><td>0.079</td><td>0.043</td><td>–</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="small">† ECE of <code>probabilities</code> · ECE of the separate <code>confidence</code> output. The benchmark computes everyone's ECE from probabilities, so the first number is the like-for-like one.</p>
+
+<figure>
+  <div class="ftitle">KL from gold, fine-tuned models</div>
+  <div class="fsub">Lower is better. One entry with a much higher listed KL (0.301) is omitted from the scale.</div>
+  <div class="chart" id="klChart"></div>
+  <figcaption>The best entries sit within 0.005 of each other; Pramana-2B has the lowest listed value.</figcaption>
+</figure>
+
+<h3>Zero-shot systems, for scale only</h3>
+<p>These general systems answer any question schema and have never seen these workflows. They are not comparable with fine-tuned models; Pramana is trained for its four workflows and transfers poorly outside them (an earlier adapter scored 0.572 on CLINC150 and 0.255 on Banking77).</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Model</th><th>Access</th><th>Accuracy</th><th>KL</th><th>Brier</th><th>ECE</th></tr></thead>
+  <tbody>
+    <tr><td>Quyet-1.0-Large (31B)</td><td>open weights</td><td>0.791</td><td>0.281</td><td>0.114</td><td>0.093</td></tr>
+    <tr><td>meraGPT Decider 1</td><td>API</td><td>0.768</td><td>0.096</td><td>0.052</td><td>0.180</td></tr>
+    <tr><td>Baseten Mammoth 1 (27B)</td><td>API</td><td>0.768</td><td>0.122</td><td>0.063</td><td>0.153</td></tr>
+    <tr><td>Liquid AI d1</td><td>API</td><td>0.742</td><td>0.475</td><td>0.155</td><td>0.124</td></tr>
+    <tr><td>TypeSafe Jev 1.13.0</td><td>API</td><td>0.727</td><td>1.442</td><td>0.148</td><td>0.144</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout">
+  <strong>A ceiling worth knowing</strong>
+  Gold labels are the mean of three samples from a roughly 4B teacher whose self-agreement is 0.735. Every fine-tuned model in the table, Pramana included, scores above that, so part of what accuracy measures here is agreement with the teacher's habits.
+</div>
+
+<h2 id="evaluation">Detailed evaluation</h2>
+<p>The tables below break both Pramana models down by question type, workflow and operating point. Three fine-tuned references that publish per-decision predictions are shown for context, recomputed with the same code, so their figures come from public predictions rather than leaderboard rows. Best value per column in bold.</p>
+
+<h3>By question type</h3>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th rowspan="2">Model</th><th colspan="3" style="text-align:center">noul (600)</th><th colspan="3" style="text-align:center">choice (600)</th><th colspan="3" style="text-align:center">score (800)</th></tr>
+    <tr><th>Acc</th><th>KL</th><th>Brier</th><th>Acc</th><th>KL</th><th>Brier</th><th>Acc</th><th>KL</th><th>Brier</th></tr>
+  </thead>
+  <tbody>
+    <tr class="ours"><td>Pramana-2B</td><td>0.858</td><td class="best">0.0365</td><td class="best">0.0287</td><td>0.767</td><td>0.1037</td><td>0.0546</td><td>0.782</td><td>0.0835</td><td>0.0413</td></tr>
+    <tr class="ours"><td>Pramana-0.8B</td><td>0.865</td><td>0.0391</td><td>0.0297</td><td>0.762</td><td>0.1115</td><td>0.0584</td><td>0.772</td><td>0.0919</td><td>0.0454</td></tr>
+    <tr><td>Decider-4B</td><td class="best">0.880</td><td>0.0410</td><td>0.0300</td><td class="best">0.800</td><td>0.1067</td><td>0.0548</td><td class="best">0.807</td><td>0.0900</td><td>0.0438</td></tr>
+    <tr><td>Arbiter-4B</td><td>0.865</td><td>0.1054</td><td>0.0572</td><td>0.780</td><td class="best">0.0997</td><td class="best">0.0520</td><td>0.801</td><td class="best">0.0767</td><td class="best">0.0379</td></tr>
+    <tr><td>sysone-0.4B</td><td>0.862</td><td>0.0376</td><td>0.0292</td><td>0.752</td><td>0.1164</td><td>0.0607</td><td>0.796</td><td>0.0844</td><td>0.0421</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Pramana's KL and Brier advantage comes from yes/no questions, where its distributions are the closest to gold in the table (KL 0.0365). On <code>choice</code> and <code>score</code> questions its accuracy is lower, which accounts for its overall accuracy level.</p>
+
+<h3>By workflow (accuracy)</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Model</th><th>Agent traces</th><th>Customer service</th><th>Invoices</th><th>Security incidents</th></tr></thead>
+  <tbody>
+    <tr class="ours"><td>Pramana-2B</td><td>0.750</td><td>0.830</td><td>0.852</td><td>0.770</td></tr>
+    <tr class="ours"><td>Pramana-0.8B</td><td>0.744</td><td>0.822</td><td>0.838</td><td>0.784</td></tr>
+    <tr><td>Decider-4B</td><td class="best">0.774</td><td>0.844</td><td>0.864</td><td class="best">0.826</td></tr>
+    <tr><td>Arbiter-4B</td><td>0.742</td><td class="best">0.848</td><td class="best">0.872</td><td>0.794</td></tr>
+    <tr><td>sysone-0.4B</td><td>0.736</td><td>0.816</td><td>0.866</td><td>0.792</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Pramana-2B's KL by workflow: agent traces 0.079, customer service 0.083, invoices 0.077, security incidents 0.063. Its accuracy is highest on invoices (0.852) and lowest on agent traces (0.750).</p>
+
+<h3>Selective accuracy</h3>
+<p>Accuracy on the most confident fraction of decisions, ranking by <code>max(probabilities)</code>. This is the operating mode of a deployed decision model, which hands its least confident cases to a person. Selective AUC is the area under accuracy-versus-coverage.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Model</th><th>50% coverage</th><th>70%</th><th>80%</th><th>90%</th><th>Selective AUC</th></tr></thead>
+  <tbody>
+    <tr class="ours"><td>Pramana-2B</td><td>0.947</td><td>0.897</td><td>0.871</td><td>0.832</td><td>0.927</td></tr>
+    <tr class="ours"><td>Pramana-0.8B</td><td>0.942</td><td>0.894</td><td>0.863</td><td>0.834</td><td>0.922</td></tr>
+    <tr><td>Decider-4B</td><td class="best">0.949</td><td class="best">0.908</td><td class="best">0.874</td><td class="best">0.853</td><td class="best">0.932</td></tr>
+    <tr><td>Arbiter-4B</td><td>0.938</td><td>0.895</td><td>0.874</td><td>0.843</td><td>0.915</td></tr>
+    <tr><td>sysone-0.4B</td><td>0.932</td><td>0.889</td><td>0.866</td><td>0.837</td><td>0.922</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Pramana-2B answers its most confident half of decisions at 94.7% accuracy and 80% of decisions at 87.1%; accuracy declines smoothly as coverage approaches 100%.</p>
+
+<h3>Conformal coverage</h3>
+<p>Split-conformal prediction sets at a 90% coverage target. Pooled coverage can look compliant while one question type falls short, so the per-type (Mondrian) minimum is reported alongside it.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Model</th><th>Pooled coverage</th><th>Mean set size</th><th>Lowest per-type coverage</th></tr></thead>
+  <tbody>
+    <tr class="ours"><td>Pramana-2B</td><td>0.920</td><td>0.443</td><td class="best">0.893 (noul)</td></tr>
+    <tr class="ours"><td>Pramana-0.8B</td><td>0.929</td><td>0.456</td><td>0.883 (choice)</td></tr>
+    <tr><td>Decider-4B</td><td>0.915</td><td class="best">0.408</td><td>0.880 (noul)</td></tr>
+    <tr><td>Arbiter-4B</td><td>0.916</td><td>0.429</td><td>0.867 (noul)</td></tr>
+    <tr><td>sysone-0.4B</td><td>0.929</td><td>0.443</td><td>0.863 (choice)</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Every model meets the 90% target pooled, and every model misses it on at least one question type. Pramana-2B has the smallest per-type shortfall.</p>
+
+<h3>Ordinal error on score questions</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Model</th><th>Expected-score MAE</th><th>Level error rate</th><th>Mass ≥ 2 levels from gold</th></tr></thead>
+  <tbody>
+    <tr class="ours"><td>Pramana-2B</td><td>0.191</td><td>0.235</td><td>0.030</td></tr>
+    <tr class="ours"><td>Pramana-0.8B</td><td>0.198</td><td>0.249</td><td>0.034</td></tr>
+    <tr><td>Decider-4B</td><td>0.192</td><td class="best">0.205</td><td class="best">0.024</td></tr>
+    <tr><td>Arbiter-4B</td><td class="best">0.187</td><td>0.214</td><td>0.025</td></tr>
+    <tr><td>sysone-0.4B</td><td>0.191</td><td>0.218</td><td>0.038</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Expected-score error is level across models; Pramana picks the wrong level slightly more often, consistent with its lower <code>score</code> accuracy.</p>
+
+<h3>Murphy decomposition</h3>
+<p>Brier-style decomposition of top-label confidence into reliability (calibration error, lower is better) and resolution (how much confidence separates right from wrong answers, higher is better).</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Model</th><th>Reliability ↓</th><th>Resolution ↑</th></tr></thead>
+  <tbody>
+    <tr class="ours"><td>Pramana-2B</td><td>0.0331</td><td>0.0289</td></tr>
+    <tr class="ours"><td>Pramana-0.8B</td><td>0.0325</td><td class="best">0.0293</td></tr>
+    <tr><td>Decider-4B</td><td class="best">0.0292</td><td>0.0179</td></tr>
+    <tr><td>Arbiter-4B</td><td>0.0397</td><td>0.0204</td></tr>
+    <tr><td>sysone-0.4B</td><td>0.0339</td><td>0.0233</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Both Pramana models have the highest resolution: their confidence separates correct from incorrect answers more sharply than the references', even though their raw top-probability calibration is ordinary. That is the property the decoupled <code>confidence</code> output exploits.</p>
+
+<h3>Cost-optimal deferral</h3>
+<p>If an error costs <i>k</i> times a human review, the best policy answers only decisions whose expected accuracy exceeds 1 − 1/<i>k</i> and defers the rest. Coverage and accuracy at that optimum:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Model</th><th>5:1 coverage</th><th>5:1 accuracy</th><th>20:1 coverage</th><th>20:1 accuracy</th></tr></thead>
+  <tbody>
+    <tr class="ours"><td>Pramana-2B</td><td>0.498</td><td>0.949</td><td>0.292</td><td>0.993</td></tr>
+    <tr class="ours"><td>Pramana-0.8B</td><td>0.508</td><td>0.942</td><td>0.279</td><td>0.987</td></tr>
+    <tr><td>Decider-4B</td><td>0.642</td><td>0.928</td><td>0.296</td><td>0.987</td></tr>
+    <tr><td>Arbiter-4B</td><td>0.570</td><td>0.928</td><td>0.226</td><td>0.969</td></tr>
+    <tr><td>sysone-0.4B</td><td>0.548</td><td>0.927</td><td>0.236</td><td>0.996</td></tr>
+  </tbody>
+</table>
+</div>
+<p>At an error-to-review cost of 5:1, Pramana-2B answers about half of all decisions at 94.9% accuracy; at 20:1 it answers 29% at 99.3%.</p>
+
+<h3>A learned review flag is not an uncertainty signal</h3>
+<p>Two workflows ask the model directly whether a case needs human review. Ranking cases by that predicted probability instead of by confidence loses 9 to 12 points of accuracy at 80% coverage for every model (Pramana-2B: 0.871 by confidence, 0.754 by its review flag). The review question encodes consequence, not the model's own uncertainty.</p>
+
+<h2 id="method">Method</h2>
+
+<h3>The metric conflict</h3>
+<p>The soft gold is the average of three teacher samples, so it spreads probability more widely than the teacher is actually wrong. KL rewards a model that matches that spread. Top-label ECE rewards a model whose top probability equals its chance of being right. Those want different temperatures.</p>
+<p>The chart traces what happens when each model's output distribution is rescaled by a single temperature T, from sharp (T = 0.33) to flat (T = 3). Every curve has a low-KL end and a low-ECE end, and no point that is low on both.</p>
+
+<figure>
+  <div class="ftitle">KL versus ECE as one temperature varies</div>
+  <div class="fsub">Each line is one model's outputs rescaled from T = 0.33 to T = 3. Lower-left is better on both.</div>
+  <div class="legend" id="frontierLegend"></div>
+  <div class="chart" id="frontierChart"></div>
+  <figcaption>Every curve has a low-KL end and a low-ECE end, and no point that is low on both. The star is Pramana-2B's decoupled output, which no single curve reaches.</figcaption>
+</figure>
+
+<h3>Decoupled calibration</h3>
+<p>Instead of choosing a point on the curve, Pramana returns two calibrations of the same logits. Both temperatures are fitted per question type on 80 training cases held out from training, never on test, and are shipped with the weights.</p>
+
+<figure class="diagram">
+  <svg viewBox="0 0 760 230" role="img" aria-label="Logits feed two temperature scalings: one fitted to the soft gold produces probabilities, one fitted to the hard label produces confidence">
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--text-3)"/></marker>
+    </defs>
+    <rect x="10" y="80" width="150" height="70" rx="10" fill="var(--surface-2)" stroke="var(--border)"/>
+    <text x="85" y="110" text-anchor="middle" font-size="15" font-weight="600" fill="var(--text)">Logits z</text>
+    <text x="85" y="131" text-anchor="middle" font-size="12.5" fill="var(--text-2)">one forward pass</text>
+    <path d="M160 105 C 210 105, 220 55, 268 55" fill="none" stroke="var(--text-3)" stroke-width="1.6" marker-end="url(#ar)"/>
+    <path d="M160 125 C 210 125, 220 175, 268 175" fill="none" stroke="var(--text-3)" stroke-width="1.6" marker-end="url(#ar)"/>
+    <rect x="272" y="22" width="200" height="66" rx="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"/>
+    <text x="372" y="50" text-anchor="middle" font-size="14" font-weight="600" fill="var(--text)">÷ T_p  (≈ 1.0)</text>
+    <text x="372" y="71" text-anchor="middle" font-size="12.5" fill="var(--text-2)">fitted to the soft gold</text>
+    <rect x="272" y="142" width="200" height="66" rx="10" fill="var(--surface)" stroke="var(--context-strong)" stroke-width="1.5"/>
+    <text x="372" y="170" text-anchor="middle" font-size="14" font-weight="600" fill="var(--text)">÷ T_c  (≈ 0.3–0.4)</text>
+    <text x="372" y="191" text-anchor="middle" font-size="12.5" fill="var(--text-2)">fitted to the hard label</text>
+    <line x1="472" y1="55" x2="530" y2="55" stroke="var(--text-3)" stroke-width="1.6" marker-end="url(#ar)"/>
+    <line x1="472" y1="175" x2="530" y2="175" stroke="var(--text-3)" stroke-width="1.6" marker-end="url(#ar)"/>
+    <text x="540" y="50" font-size="15" font-weight="600" fill="var(--text)"><tspan font-family="ui-monospace, Menlo, monospace">probabilities</tspan></text>
+    <text x="540" y="71" font-size="12.5" fill="var(--text-2)">scored · KL 0.0755 · Brier 0.0415</text>
+    <text x="540" y="170" font-size="15" font-weight="600" fill="var(--text)"><tspan font-family="ui-monospace, Menlo, monospace">confidence</tspan></text>
+    <text x="540" y="191" font-size="12.5" fill="var(--text-2)">routing · ECE 0.038 (vs 0.168)</text>
+  </svg>
+</figure>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Model</th><th>KL</th><th>ECE of max(probabilities)</th><th>ECE of confidence</th></tr></thead>
+  <tbody>
+    <tr><td>Pramana-2B</td><td>0.0755</td><td>0.168</td><td class="best">0.038</td></tr>
+    <tr><td>Pramana-0.8B</td><td>0.0819</td><td>0.165</td><td class="best">0.025</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Training without a calibration step</h3>
+<p>Pramana is trained with cross-entropy against the soft gold plus a Brier term (weight 1.0) and a small ordinal term (0.1), and is shipped without a post-hoc hard-label calibration. The fitted probability temperature for all three released adapters is 1.00 to 1.05; Pramana-0.8B's holdout KL is 0.0747 before and after fitting. On an earlier run, the library's default hard-label calibration sharpened the same model about 3× and raised KL from 0.076 to 0.50.</p>
+
+<h3>Two adapters on one base</h3>
+<p>The released Pramana-2B averages the probabilities of two LoRA adapters trained on the same base with learning rates 2e-4 and 1e-4. Alone they score 0.7970 and 0.7940; together, 0.8005 with lower KL and Brier than either. Inference costs two 2B passes. In fairness: averaging was decided after both adapters had been scored on test. Its accuracy gain over the better adapter is within noise; the KL and Brier gains are the consistent part.</p>
+
+<h3>A cascade between the two sizes</h3>
+<figure>
+  <div class="ftitle">Who answers each decision</div>
+  <div class="fsub">Pramana-0.8B answers when its top probability is at least 0.68 (chosen on held-out training rows); otherwise Pramana-2B answers.</div>
+  <div class="chart" id="cascadeChart"></div>
+  <figcaption>Cascade accuracy 0.8000 against 0.8005 for Pramana-2B alone; KL 0.0783, Brier 0.0425. Validate the threshold on your own traffic before relying on it.</figcaption>
+</figure>
+
+<h3>Training configuration</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Setting</th><th>Pramana-2B (each adapter)</th><th>Pramana-0.8B</th></tr></thead>
+  <tbody>
+    <tr><td>Base</td><td>Qwen3.5-2B, 4-bit</td><td>Qwen3.5-0.8B, 4-bit</td></tr>
+    <tr><td>LoRA</td><td>rank 16, alpha 16</td><td>rank 16, alpha 16</td></tr>
+    <tr><td>Data</td><td>train split, 1,120 cases (80 held out)</td><td>same</td></tr>
+    <tr><td>Steps · batch</td><td>400 · 8 (~2.9 epochs)</td><td>400 · 8</td></tr>
+    <tr><td>Learning rate</td><td>2e-4 and 1e-4, cosine</td><td>3e-4, cosine</td></tr>
+    <tr><td>Sequence length</td><td>1,024</td><td>2,048</td></tr>
+    <tr><td>Loss</td><td>soft-gold CE + Brier 1.0 + ordinal 0.1</td><td>same</td></tr>
+    <tr><td>Hardware</td><td>one A100 80GB</td><td>one A100 80GB</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="ablations">What did not work</h2>
+<p>Negative results are the most useful part of this report for anyone working on the same benchmark.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Change</th><th>Test accuracy</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>Brier weight 0.1, 250 steps (vs 1.0, 400 steps)</td><td>0.784 vs 0.801</td><td style="text-align:left">second is better on every metric; two changes at once, so confounded</td></tr>
+    <tr><td>Ordinal weight 1.0 + label smoothing</td><td>0.7965</td><td style="text-align:left">no accuracy gain</td></tr>
+    <tr><td>Sequence length 2,048 (2B)</td><td>0.7950</td><td style="text-align:left">no gain on long-log workflows</td></tr>
+    <tr><td>LoRA rank 64, LR 3e-4</td><td>0.7855</td><td style="text-align:left">overfits: best holdout (0.8325), worst test</td></tr>
+    <tr><td>Learning rate 1e-4 alone</td><td>0.7940</td><td style="text-align:left">worse holdout KL; rejected before test</td></tr>
+    <tr><td>Three seeds of one recipe</td><td>0.797 ± 0.005</td><td style="text-align:left">KL 0.0762 ± 0.0007: very stable</td></tr>
+  </tbody>
+</table>
+</div>
+<p>The accuracy gap to the leaders is concentrated in the long-log workflows (security incidents, agent traces), which suggested truncation; the 2,048-token run ruled that out. The two models above Pramana on accuracy report training on extra decision data. That, not more tuning, is the remaining lever.</p>
+
+
+<h2 id="reproduce">Reproduce</h2>
+<pre><code># score the released predictions with the benchmark's metric definitions
+uv run --with pyarrow python bench/score.py results/final/pramana2b/preds.jsonl
+
+# refit both temperatures and the cascade threshold from the shipped logits
+uv run --with torch --with pyarrow python bench/ensemble.py \
+    results/final/large/logits.pt results/final/lowlr/logits.pt \
+    --small results/final/small/logits.pt --out results/final/pramana2b
+
+# retrain the release candidates (GPU machine, one A100 80GB)
+bash jobs/final.sh</code></pre>
+
+<h2>Limitations</h2>
+<ul class="clean">
+  <li>Pramana answers only the four workflows it was trained on.</li>
+  <li>Scores measure agreement with a teacher model, not ground truth.</li>
+  <li>Temperatures and the cascade threshold are fitted on 400 held-out decisions; validate on production traffic.</li>
+  <li>Accuracy is not state of the art: several larger fine-tuned models score higher.</li>
+</ul>
+
+<h2>Acknowledgements</h2>
+<p class="muted">Base models <a href="https://huggingface.co/Qwen/Qwen3.5-2B">Qwen3.5-2B</a> and <a href="https://huggingface.co/Qwen/Qwen3.5-0.8B">Qwen3.5-0.8B</a> by the Qwen team. Training framework and decision head: <a href="https://github.com/unslothai/unsloth">Unsloth</a> 2026.10.7. Benchmark, metric definitions and all comparison figures: <a href="https://huggingface.co/datasets/LocalLLaMA/typed-decisions">Typed Decisions</a> by LocalLLaMA.</p>
+
+</main>
+
+<footer>
+  <div class="wrap">Pramana · Apache 2.0 · Pramāṇa (Sanskrit): a valid means of knowledge, and a measure of how sure you can be.</div>
+</footer>
+
+<script>
+(function () {
+
+  const root = document.documentElement;
+  const css = (v) => getComputedStyle(root).getPropertyValue(v).trim();
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs, parent) => {
+    const n = document.createElementNS(NS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(n);
+    return n;
+  };
+  function tipFor(box) {
+    let t = box.querySelector('.tip');
+    if (!t) { t = document.createElement('div'); t.className = 'tip'; box.appendChild(t); }
+    return {
+      show(html, x, y) {
+        t.innerHTML = html; t.style.opacity = 1;
+        const w = box.clientWidth, tw = t.offsetWidth;
+        t.style.left = Math.min(Math.max(x + 12, 0), w - tw) + 'px';
+        t.style.top = (y - t.offsetHeight - 10) + 'px';
+      },
+      hide() { t.style.opacity = 0; }
+    };
+  }
+  function pos(box, evt) { const r = box.getBoundingClientRect(); return [evt.clientX - r.left, evt.clientY - r.top]; }
+
+  // ---- KL bars ----
+  const kl = [
+    ['Pramana-2B', 0.0755, true], ['ministral3-3b-reasoning', 0.077], ['OpenDecider-nano', 0.079],
+    ['sysone-0.4B', 0.080], ['OpenDecider-large-td', 0.081], ['od1-typed-decisions', 0.082],
+    ['Pramana-0.8B', 0.0819, true], ['Arbiter-4B', 0.092], ['Qwen3.5-4B-typed-decisions', 0.0992]
+  ].sort((a, b) => a[1] - b[1]);
+  function drawKL() {
+    const box = document.getElementById('klChart'); box.innerHTML = '';
+    const W = 760, rowH = 30, L = 210, R = 60, T = 6, H = T + kl.length * rowH + 26;
+    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Horizontal bar chart of KL from gold for fine-tuned models' }, box);
+    const max = 0.11, x = (v) => L + (v / max) * (W - L - R);
+    [0, 0.02, 0.04, 0.06, 0.08, 0.10].forEach((g) => {
+      el('line', { x1: x(g), x2: x(g), y1: T, y2: H - 22, stroke: css('--grid') }, svg);
+      const t = el('text', { x: x(g), y: H - 6, 'text-anchor': 'middle', 'font-size': 11.5, fill: css('--text-3') }, svg);
+      t.textContent = g.toFixed(2);
+    });
+    const tip = tipFor(box);
+    kl.forEach(([name, v, ours], i) => {
+      const y = T + i * rowH + 6, h = rowH - 12;
+      const lab = el('text', { x: L - 10, y: y + h / 2 + 4, 'text-anchor': 'end', 'font-size': 13, fill: ours ? css('--text') : css('--text-2'), 'font-weight': ours ? 600 : 400 }, svg);
+      lab.textContent = name;
+      const w = x(v) - L;
+      el('path', { d: `M${L},${y} h${w - 4} a4,4 0 0 1 4,4 v${h - 8} a4,4 0 0 1 -4,4 h${-(w - 4)} z`, fill: ours ? css('--accent') : css('--context') }, svg);
+      const val = el('text', { x: x(v) + 6, y: y + h / 2 + 4, 'font-size': 12.5, fill: css('--text-2') }, svg);
+      val.textContent = v.toFixed(v < 0.08 && v.toString().length > 5 ? 4 : 3);
+      const hit = el('rect', { x: 0, y: y - 6, width: W, height: rowH, fill: 'transparent' }, svg);
+      hit.addEventListener('mousemove', (e) => { const [px, py] = pos(box, e); tip.show(`<b>${name}</b><br>KL ${v}`, px, py); });
+      hit.addEventListener('mouseleave', tip.hide);
+    });
+  }
+
+  // ---- frontier ----
+  const F = {
+    'Pramana-2B': [[0.33,0.4953,0.038],[0.5,0.2258,0.036],[0.7,0.1161,0.0991],[0.85,0.0859,0.1355],[1.0,0.0755,0.1675],[1.2,0.077,0.2036],[1.5,0.0937,0.2456],[2.0,0.1313,0.296],[3.0,0.1973,0.3545]],
+    'Decider-4B': [[0.33,0.6392,0.0447],[0.5,0.2987,0.0287],[0.7,0.1492,0.0893],[0.85,0.1021,0.1273],[1.0,0.0803,0.1604],[1.2,0.0719,0.1976],[1.5,0.0798,0.2426],[2.0,0.111,0.2969],[3.0,0.1749,0.3619]],
+    'sysone-0.4B': [[0.33,0.4892,0.0284],[0.5,0.2245,0.0429],[0.7,0.1179,0.1052],[0.85,0.0892,0.1422],[1.0,0.08,0.1743],[1.2,0.0826,0.2101],[1.5,0.1002,0.2525],[2.0,0.1383,0.3025],[3.0,0.2037,0.36]],
+    'Arbiter-4B': [[0.33,0.534,0.0266],[0.5,0.2512,0.0554],[0.7,0.1357,0.1102],[0.85,0.1036,0.1471],[1.0,0.0922,0.1797],[1.2,0.0932,0.217],[1.5,0.1095,0.2605],[2.0,0.1464,0.3099],[3.0,0.2104,0.3683]]
+  };
+  function drawFrontier() {
+    const box = document.getElementById('frontierChart'); box.innerHTML = '';
+    const leg = document.getElementById('frontierLegend');
+    leg.innerHTML = `<span><i style="background:${css('--accent')}"></i>Pramana-2B (one temperature)</span>` +
+      `<span><i style="background:${css('--context-strong')}"></i>Decider-4B, sysone-0.4B, Arbiter-4B</span>` +
+      `<span>★ Pramana-2B, decoupled outputs</span>`;
+    const W = 760, H = 420, L = 56, R = 120, T = 14, B = 46;
+    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Line chart of KL against ECE as temperature varies, for four models' }, box);
+    const xMax = 0.4, yMin = 0.06, yMax = 0.66;
+    const x = (v) => L + (v / xMax) * (W - L - R);
+    const y = (v) => T + (1 - (Math.log(v) - Math.log(yMin)) / (Math.log(yMax) - Math.log(yMin))) * (H - T - B);
+    [0, 0.1, 0.2, 0.3, 0.4].forEach((g) => {
+      el('line', { x1: x(g), x2: x(g), y1: T, y2: H - B, stroke: css('--grid') }, svg);
+      const t = el('text', { x: x(g), y: H - B + 18, 'text-anchor': 'middle', 'font-size': 11.5, fill: css('--text-3') }, svg); t.textContent = g.toFixed(1);
+    });
+    [0.07, 0.1, 0.2, 0.3, 0.5].forEach((g) => {
+      el('line', { x1: L, x2: W - R, y1: y(g), y2: y(g), stroke: css('--grid') }, svg);
+      const t = el('text', { x: L - 8, y: y(g) + 4, 'text-anchor': 'end', 'font-size': 11.5, fill: css('--text-3') }, svg); t.textContent = g;
+    });
+    const xl = el('text', { x: (L + W - R) / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': 12.5, fill: css('--text-2') }, svg); xl.textContent = 'ECE (lower is better)';
+    const yl = el('text', { x: 14, y: (T + H - B) / 2, 'text-anchor': 'middle', 'font-size': 12.5, fill: css('--text-2'), transform: `rotate(-90 14 ${(T + H - B) / 2})` }, svg); yl.textContent = 'KL, log scale (lower is better)';
+    const tip = tipFor(box);
+    const order = ['Decider-4B', 'sysone-0.4B', 'Arbiter-4B', 'Pramana-2B'];
+    order.forEach((m) => {
+      const ours = m === 'Pramana-2B', col = ours ? css('--accent') : css('--context-strong');
+      const pts = F[m].map(([t, k, e]) => [x(e), y(k), t, k, e]);
+      el('path', { d: 'M' + pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' L'), fill: 'none', stroke: col, 'stroke-width': ours ? 2.5 : 1.75, 'stroke-linejoin': 'round' }, svg);
+      pts.forEach(([px, py, t, k, e]) => {
+        el('circle', { cx: px, cy: py, r: t === 1.0 ? 5 : 3.2, fill: col, stroke: css('--surface'), 'stroke-width': 2 }, svg);
+        const hit = el('circle', { cx: px, cy: py, r: 12, fill: 'transparent' }, svg);
+        hit.addEventListener('mousemove', (ev) => { const [a, b] = pos(box, ev); tip.show(`<b>${m}</b> · T = ${t}<br>KL ${k} · ECE ${e}`, a, b); });
+        hit.addEventListener('mouseleave', tip.hide);
+      });
+      const end = pts[pts.length - 1];
+      const lab = el('text', { x: end[0] + 8, y: end[1] + 4 + (m === 'sysone-0.4B' ? -8 : m === 'Arbiter-4B' ? 8 : 0), 'font-size': 12, fill: ours ? css('--text') : css('--text-2'), 'font-weight': ours ? 600 : 400 }, svg);
+      lab.textContent = m;
+    });
+    // decoupled point
+    const sx = x(0.038), sy = y(0.0755);
+    const star = el('path', { d: starPath(sx, sy, 9, 4), fill: css('--accent'), stroke: css('--surface'), 'stroke-width': 1.5 }, svg);
+    const st = el('text', { x: sx + 14, y: sy + 4, 'font-size': 12, 'font-weight': 600, fill: css('--text') }, svg); st.textContent = 'decoupled: KL 0.0755, ECE 0.038';
+    const hit = el('circle', { cx: sx, cy: sy, r: 14, fill: 'transparent' }, svg);
+    hit.addEventListener('mousemove', (ev) => { const [a, b] = pos(box, ev); tip.show('<b>Pramana-2B, two outputs</b><br>probabilities KL 0.0755<br>confidence ECE 0.038', a, b); });
+    hit.addEventListener('mouseleave', tip.hide);
+  }
+  function starPath(cx, cy, ro, ri) {
+    let d = '';
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 ? ri : ro, a = -Math.PI / 2 + i * Math.PI / 5;
+      d += (i ? 'L' : 'M') + (cx + r * Math.cos(a)).toFixed(1) + ',' + (cy + r * Math.sin(a)).toFixed(1);
+    }
+    return d + 'Z';
+  }
+
+  // ---- cascade ----
+  function drawCascade() {
+    const box = document.getElementById('cascadeChart'); box.innerHTML = '';
+    const W = 760, H = 92, L = 0, Wb = W;
+    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Stacked bar: 33.2% of decisions answered by Pramana-0.8B, 66.8% by Pramana-2B' }, box);
+    const a = 0.332, w1 = Wb * a - 1, w2 = Wb * (1 - a) - 1, y0 = 10, h = 34;
+    el('path', { d: `M${L + 4},${y0} h${w1 - 4} v${h} h${-(w1 - 4)} a4,4 0 0 1 -4,-4 v${-(h - 8)} a4,4 0 0 1 4,-4 z`, fill: css('--context') }, svg);
+    el('path', { d: `M${L + w1 + 2},${y0} h${w2 - 4} a4,4 0 0 1 4,4 v${h - 8} a4,4 0 0 1 -4,4 h${-(w2 - 4)} z`, fill: css('--accent') }, svg);
+    const t1 = el('text', { x: 8, y: y0 + h + 22, 'font-size': 13, fill: css('--text') }, svg); t1.textContent = 'Pramana-0.8B alone: 33.2%';
+    const t2 = el('text', { x: W - 4, y: y0 + h + 22, 'text-anchor': 'end', 'font-size': 13, fill: css('--text') }, svg); t2.textContent = 'deferred to Pramana-2B: 66.8%';
+    const tip = tipFor(box);
+    [[0, w1, 'Answered by Pramana-0.8B', '33.2% of decisions'], [w1 + 2, w2, 'Deferred to Pramana-2B', '66.8% of decisions']].forEach(([x0, w, n, s]) => {
+      const r = el('rect', { x: x0, y: y0, width: w, height: h, fill: 'transparent' }, svg);
+      r.addEventListener('mousemove', (e) => { const [px, py] = pos(box, e); tip.show(`<b>${n}</b><br>${s}`, px, py); });
+      r.addEventListener('mouseleave', tip.hide);
+    });
+  }
+
+  function draw() { drawKL(); drawFrontier(); drawCascade(); }
+  draw();
+})();
+</script>
+</body>
+</html>

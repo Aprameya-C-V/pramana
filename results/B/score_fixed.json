@@ -1,0 +1,211 @@
+{
+  "overall": {
+    "n_decisions": 2000,
+    "accuracy": 0.784,
+    "kl_from_gold": 0.5489622431210264,
+    "brier": 0.13596276218981146,
+    "ece": 0.04971765535063165,
+    "mean_confidence": 0.824827461872929
+  },
+  "by_workflow": {
+    "agent_trace_observability": {
+      "n_decisions": 500,
+      "accuracy": 0.724,
+      "kl_from_gold": 0.5852004870984467,
+      "brier": 0.16557416498915528,
+      "ece": 0.07480573319001543,
+      "mean_confidence": 0.7973700481134744
+    },
+    "customer_service": {
+      "n_decisions": 500,
+      "accuracy": 0.826,
+      "kl_from_gold": 0.646785196862971,
+      "brier": 0.13037326157693088,
+      "ece": 0.051578700913369004,
+      "mean_confidence": 0.8530718415701803
+    },
+    "invoice_processing": {
+      "n_decisions": 500,
+      "accuracy": 0.83,
+      "kl_from_gold": 0.47786540265884814,
+      "brier": 0.11030076170277801,
+      "ece": 0.04202134266271519,
+      "mean_confidence": 0.8695473426627154
+    },
+    "security_incidents": {
+      "n_decisions": 500,
+      "accuracy": 0.756,
+      "kl_from_gold": 0.4859978858638396,
+      "brier": 0.13760286049038167,
+      "ece": 0.03441158949305153,
+      "mean_confidence": 0.7793206151453458
+    }
+  },
+  "by_question": {
+    "agent_trace_observability/action": {
+      "n_decisions": 100,
+      "accuracy": 0.71,
+      "kl_from_gold": 0.661051289108441,
+      "brier": 0.15028106345535708,
+      "ece": 0.0600935055117351,
+      "mean_confidence": 0.7103685675418657
+    },
+    "agent_trace_observability/needs_review": {
+      "n_decisions": 100,
+      "accuracy": 0.87,
+      "kl_from_gold": 0.20355046213577385,
+      "brier": 0.05446265642238,
+      "ece": 0.05303200000000007,
+      "mean_confidence": 0.8169679999999999
+    },
+    "agent_trace_observability/outcome": {
+      "n_decisions": 100,
+      "accuracy": 0.65,
+      "kl_from_gold": 0.7570706870565762,
+      "brier": 0.22459382111826456,
+      "ece": 0.17498040806363413,
+      "mean_confidence": 0.824980408063634
+    },
+    "agent_trace_observability/risk": {
+      "n_decisions": 100,
+      "accuracy": 0.77,
+      "kl_from_gold": 0.6825356837813394,
+      "brier": 0.20041161758467205,
+      "ece": 0.11158921657614218,
+      "mean_confidence": 0.8578712442168624
+    },
+    "agent_trace_observability/urgency": {
+      "n_decisions": 100,
+      "accuracy": 0.62,
+      "kl_from_gold": 0.6217943134101032,
+      "brier": 0.19812166636510284,
+      "ece": 0.1566620207450103,
+      "mean_confidence": 0.7766620207450101
+    },
+    "customer_service/action": {
+      "n_decisions": 100,
+      "accuracy": 0.67,
+      "kl_from_gold": 0.8935027600556835,
+      "brier": 0.21400130304315257,
+      "ece": 0.1423075765315758,
+      "mean_confidence": 0.800703694719757
+    },
+    "customer_service/category": {
+      "n_decisions": 100,
+      "accuracy": 0.96,
+      "kl_from_gold": 0.7136194257447243,
+      "brier": 0.0530315949022244,
+      "ece": 0.024386040581820263,
+      "mean_confidence": 0.9571780405818204
+    },
+    "customer_service/churn_risk": {
+      "n_decisions": 100,
+      "accuracy": 0.85,
+      "kl_from_gold": 0.6947479973530654,
+      "brier": 0.13305191905519032,
+      "ece": 0.07371140009650394,
+      "mean_confidence": 0.8377578572615686
+    },
+    "customer_service/needs_human": {
+      "n_decisions": 100,
+      "accuracy": 0.79,
+      "kl_from_gold": 0.19974883649448555,
+      "brier": 0.12151628844102,
+      "ece": 0.06705300000000004,
+      "mean_confidence": 0.836711
+    },
+    "customer_service/urgency": {
+      "n_decisions": 100,
+      "accuracy": 0.86,
+      "kl_from_gold": 0.7323069646668964,
+      "brier": 0.13026520244306705,
+      "ece": 0.06900619629717199,
+      "mean_confidence": 0.8330086152877562
+    },
+    "invoice_processing/discrepancy_severity": {
+      "n_decisions": 100,
+      "accuracy": 0.81,
+      "kl_from_gold": 0.6782713107829728,
+      "brier": 0.137196111248303,
+      "ece": 0.0900480483122804,
+      "mean_confidence": 0.8549233282150333
+    },
+    "invoice_processing/disposition": {
+      "n_decisions": 100,
+      "accuracy": 0.72,
+      "kl_from_gold": 0.6661260825441653,
+      "brier": 0.1780930669258284,
+      "ece": 0.08300208175047094,
+      "mean_confidence": 0.8030020817504707
+    },
+    "invoice_processing/duplicate": {
+      "n_decisions": 100,
+      "accuracy": 0.95,
+      "kl_from_gold": 0.13853002118106708,
+      "brier": 0.016141115423240003,
+      "ece": 0.018913000000001127,
+      "mean_confidence": 0.931087
+    },
+    "invoice_processing/matches_order": {
+      "n_decisions": 100,
+      "accuracy": 0.94,
+      "kl_from_gold": 0.17829675873319673,
+      "brier": 0.048322014261040006,
+      "ece": 0.04668199999999936,
+      "mean_confidence": 0.93408
+    },
+    "invoice_processing/urgency": {
+      "n_decisions": 100,
+      "accuracy": 0.73,
+      "kl_from_gold": 0.7281028400528391,
+      "brier": 0.17175150065547864,
+      "ece": 0.10701430334807313,
+      "mean_confidence": 0.824644303348073
+    },
+    "security_incidents/credential_compromise": {
+      "n_decisions": 100,
+      "accuracy": 0.79,
+      "kl_from_gold": 0.1783422278668634,
+      "brier": 0.09484327845214001,
+      "ece": 0.09252600000000005,
+      "mean_confidence": 0.7865040000000001
+    },
+    "security_incidents/disposition": {
+      "n_decisions": 100,
+      "accuracy": 0.79,
+      "kl_from_gold": 0.6072860910376652,
+      "brier": 0.15447820046094982,
+      "ece": 0.0684108206940983,
+      "mean_confidence": 0.7621645000414751
+    },
+    "security_incidents/severity": {
+      "n_decisions": 100,
+      "accuracy": 0.72,
+      "kl_from_gold": 0.9088920454260594,
+      "brier": 0.18740717305711424,
+      "ece": 0.06478037869899182,
+      "mean_confidence": 0.782999093146559
+    },
+    "security_incidents/true_positive": {
+      "n_decisions": 100,
+      "accuracy": 0.82,
+      "kl_from_gold": 0.20656444042954408,
+      "brier": 0.1005767277517,
+      "ece": 0.07145699999999994,
+      "mean_confidence": 0.8375150000000001
+    },
+    "security_incidents/urgency": {
+      "n_decisions": 100,
+      "accuracy": 0.66,
+      "kl_from_gold": 0.528904624559066,
+      "brier": 0.15070892273000436,
+      "ece": 0.098697202076502,
+      "mean_confidence": 0.7274204825386948
+    }
+  },
+  "coverage": {
+    "scored": 2000,
+    "expected": 2000,
+    "missing": 0
+  }
+}

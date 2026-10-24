@@ -1,0 +1,10 @@
+== pulled small 20:23:29
+holdout KL: served 0.0747 -> soft-fit 0.0747
+== pulled large 20:25:50
+holdout KL: served 0.0700 -> soft-fit 0.0699
+== pulled lowlr 20:27:00
+holdout KL: served 0.0727 -> soft-fit 0.0726
+== all pulled 20:27:00; safe to terminate the pod
+== selected 2B variant by holdout KL: large
+large test:   accuracy 0.7970 | kl 0.0765 | brier 0.0422 | ece 0.1618
+small test:   accuracy 0.7970 | kl 0.0819 | brier 0.0446 | ece 0.1646

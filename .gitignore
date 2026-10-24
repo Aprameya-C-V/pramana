@@ -1,0 +1,8 @@
+# model weights live on Hugging Face (apracv/pramana-2b, apracv/pramana-0.8b)
+results/final/*/adapter/
+**/checkpoints/
+*.safetensors
+# local scratch
+__pycache__/
+.DS_Store
+hf/preview/
